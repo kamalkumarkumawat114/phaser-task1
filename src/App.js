@@ -1,121 +1,67 @@
 
 import React, { useState } from "react";
-import Phaser from "phaser";
-import "./App.css";
+import GameCanvas from "./GameCanvas";
+import SessionLog from "./SessionLog";
+
 const App = () => {
   const [sessions, setSessions] = useState([]);
+  const [startGame, setStartGame] = useState(false);
+  const [stopGame, setStopGame] = useState(false);
   const [counter, setCounter] = useState(0);
-  const [phaserGame, setPhaserGame] = useState(null);
-  const [tween, setTween] = useState(null);
+  const [sessionActive, setSessionActive] = useState(false); 
 
   const startSession = () => {
+    if (sessionActive) {
+      
+      return;
+    }
+
     const sessionId = Math.random().toString(36).substr(2, 9);
-    const countdown = Math.floor(Math.random() * (120 - 30 + 1)) + 30; 
-    const startTime = new Date().toLocaleTimeString();
+    const startTime = Date.now();
+    const randomCountdown = Math.floor(Math.random() * (120 - 30 + 1)) + 30;
 
-    setCounter(countdown);
+    setCounter(randomCountdown);
+    setStartGame(true);
+    setStopGame(false);
+    setSessionActive(true); 
 
-    setSessions((prevSessions) => [
-      ...prevSessions,
-      { sessionId, startTime, endTime: null },
-    ]);
+    const countdownInterval = setInterval(() => {
+      setCounter((prevCounter) => {
+        if (prevCounter <= 1) {
+          clearInterval(countdownInterval);
 
-    const interval = setInterval(() => {
-      setCounter((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          const endTime = new Date().toLocaleTimeString();
+          const endTime = Date.now();
 
-          setSessions((prevSessions) =>
-            prevSessions.map((session) =>
-              session.sessionId === sessionId
-                ? { ...session, endTime }
-                : session
-            )
-          );
+          setSessions((prevSessions) => [
+            ...prevSessions,
+            { id: sessionId, startTime, endTime },
+          ]);
 
-          stopAnimation(); 
+          setStartGame(false);
+          setStopGame(true);
+          setSessionActive(false); 
           return 0;
         }
-        return prev - 1;
+        return prevCounter - 1;
       });
     }, 1000);
-
-    startAnimation();
-  };
-
-  const startAnimation = () => {
-    if (phaserGame) return; 
-
-    const config = {
-      type: Phaser.AUTO,
-      width: 800,
-      height: 400,
-      backgroundColor: "#87CEEB",
-      parent: "phaser-container",
-      scene: {
-        create: function () {
-          const ball = this.add.circle(400, 300, 20, 0xff0000); 
-          const floorY = 380; 
-          const midY = 200; 
-
-          const ballTween = this.tweens.add({
-            targets: ball,
-            y: { from: floorY, to: midY }, 
-            duration: 700,
-            yoyo: true,
-            repeat: -1, 
-          });
-
-          setTween(ballTween); 
-        },
-      },
-    };
-
-    setPhaserGame(new Phaser.Game(config)); 
-  };
-
-  const stopAnimation = () => {
-    if (tween) {
-      tween.stop(); 
-      setTween(null); 
-    }
-    if (phaserGame) {
-      phaserGame.destroy(true); 
-      setPhaserGame(null); 
-    }
   };
 
   return (
-    <div className="container">
-      {/* Left Panel */}
-      <div className="left-panel">
-        <h1>Phaser Task</h1>
-        <button onClick={startSession} className="button">
-          Start Game
+    <div style={{ display: "flex" }}>
+      {/* Left Panel: Game and Controls */}
+      <div style={{ flex: 1, padding: "20px" }}>
+        <h1>Phaser-Task1</h1>
+        <button onClick={startSession} disabled={sessionActive}>
+          {sessionActive ? "Session Active..." : "Start Game"}
         </button>
-        <div className="counter">
-          <strong>Counter:</strong> {counter}
-        </div>
-        <div id="phaser-container" className="phaser-container"></div>
+        <p>Counter: {counter}</p>
+        <GameCanvas startGame={startGame} stopGame={stopGame} />
       </div>
 
-      {/* Right Panel */}
-      <div className="right-panel">
-        <h3>Session Details</h3>
-        <ul className="session-list">
-          {sessions.map((session, index) => (
-            <li key={index} className="session-item">
-              <div className="session-id">
-                <strong>Session ID:</strong> {session.sessionId}
-              </div>
-              <div className="session-time">
-                <strong>Start:</strong> {session.startTime}
-                <strong>End:</strong> {session.endTime || "In Progress"}
-              </div>
-            </li>
-          ))}
-        </ul>
+      {/* Right Panel: Session Log */}
+      <div style={{ flex: 1, padding: "20px", borderLeft: "1px solid #ccc" }}>
+        <SessionLog sessions={sessions} />
       </div>
     </div>
   );
